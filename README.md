@@ -1,44 +1,64 @@
+# 📖 Kuro Reader v2 | القارئ الشامل
+
 <div align="center">
-
-# 🦉 Kuro Manga - كورو مانجا
-
-**A Next-Generation, Ultra-Optimized Manga & Manhwa Reader built with pure Jetpack Compose.**
-
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-blue.svg?logo=kotlin)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-success.svg?logo=android)](https://developer.android.com/jetpack/compose)
-[![Architecture](https://img.shields.io/badge/Architecture-MVVM-orange.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-purple.svg)]()
-
-<br>
-<img src="https://via.placeholder.com/800x400?text=Kuro+Manga+Showcase+Image" alt="Kuro App Showcase" width="100%">
-<br>
-
+  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android"/>
+  <img src="https://img.shields.io/badge/UI-Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose"/>
+  <img src="https://img.shields.io/badge/Language-Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin"/>
+  <img src="https://img.shields.io/badge/Architecture-MVVM-FF9900?style=for-the-badge" alt="MVVM Architecture"/>
 </div>
-
-## 📌 عن التطبيق (About)
-**Kuro** ليس مجرد قارئ مانجا تقليدي، بل هو "محرك قراءة" (Reading Engine) تم هندسته من الصفر لتقديم أقصى درجات الأداء على هواتف الأندرويد. يجمع التطبيق بين الواجهة الزجاجية الفاخرة (Liquid Glass UI)، والاستهلاك شبه المعدوم للذاكرة، مع نظام شبكات ذكي يوفر استهلاك البيانات ويتخطى حمايات السيرفرات تلقائياً.
 
 ---
 
-## ✨ المميزات المعمارية والبصرية (Key Features)
+## 🌟 نبذة عن التطبيق (Overview)
+**Kuro Reader** ليس مجرد تطبيق قراءة تقليدي، بل هو **محرك هندسي متكامل** مصمم لتقديم تجربة قراءة خالية من القيود للمانجا، المانهوا، والروايات. تم بناء التطبيق بلغة التصميم الحديثة **(Liquid Glass / Minimalist)**، مع التركيز التام على الأداء الصاروخي، راحة العين، وتخطي أعتى حمايات المواقع (مثل Cloudflare) بصمت تام. 
 
-### 🚀 1. محرك الشبكة الذكي (Adaptive Smart Proxy)
-- **توفير البيانات (Data Saver):** دمج إنترسبتور ذكي يحول صيغ الصور الثقيلة (PNG/JPG) إلى `WebP` حياً، مع جودة ديناميكية تتكيف مع الشبكة (`85%` للـ WiFi و `60%` للبيانات الخلوية).
-- **التخطي التلقائي (Smart Fallback):** نظام مقاوم للأعطال (Bulletproof)؛ إذا رفض سيرفر المانجا البروكسي (Error 403)، يقوم التطبيق بإغلاق الطلب والتحويل للرابط المباشر في أجزاء من الثانية دون أن يشعر المستخدم.
+---
 
-### 🧠 2. إدارة ذاكرة صارمة (Zero-OOM Architecture)
-- الاعتماد على `Bitmap.Config.RGB_565` داخل مكتبة Coil لقص قنوات الشفافية غير المستخدمة في المانجا، مما يؤدي إلى **توفير 50% من استهلاك الرام (RAM)**. يمكنك تمرير فصول مانهوا طويلة جداً (100+ صفحة) بنعومة حريرية.
+## ✨ المميزات الحصرية (Key Features)
 
-### 🎨 3. واجهة الزجاج السائل (Liquid Glass UI)
-- تصميم Minimalist فاخر يعتمد على اللون الأسود النقي (Pure AMOLED Black) لتوفير البطارية.
-- شريط تنقل سفلي عائم (Floating Bottom Navigation) بخلفية زجاجية شفافة، تنزلق تحته أغلفة المانجا بسلاسة مذهلة.
+### 🎨 1. تصميم "الزجاج السائل" والانتقالات السينمائية (Liquid Glass UI & UX)
+* **واجهة خالية من المشتتات:** شريط تنقل سفلي يعتمد على الأيقونات الأنيقة فقط، مع خلفيات زجاجية شفافة.
+* **Shared Element Transitions:** انتقال سلس وسينمائي لأغلفة المانجا من شاشة الاستكشاف (Discover) إلى شاشة التفاصيل، مما يعطي إحساساً بالفخامة وسرعة الاستجابة.
+* **Shimmer Loading:** تأثيرات تحميل احترافية بدلاً من مؤشرات التحميل المزعجة.
 
-### 🎛️ 4. تجربة قراءة غامرة (Immersive Reading UX)
-- **إيماءات متقدمة:** نظام ذكي يجمع بين التكبير (Pinch-to-Zoom) والتمرير بسلاسة دون تداخل في الإيماءات (Gesture Conflicts).
-- **إخفاء القوائم (Immersive Mode):** بضغطة واحدة، تختفي جميع الواجهات لتترك الشاشة بأكملها للقصة.
+### 📖 2. محرك قراءة الروايات المتطور (Advanced Novel Engine)
+* **6 ثيمات مصممة هندسياً:** (ليلي، شاشة OLED، ورق قديم، ورق أبيض، حماية العين، ورمادي داكن) لتناسب جميع ظروف الإضاءة.
+* **قراءة غامرة (Immersive Edge-to-Edge):** اختفاء تلقائي لشريط البطارية وأزرار النظام أثناء القراءة للتركيز التام على النص.
+* **تنسيق عربي مثالي (RTL Typography):** ضبط دقيق لعلامات الترقيم والمحاذاة، مع لوحة تحكم سفلية لتخصيص (حجم الخط، ارتفاع السطر، والمسافة البادئة للفقرات) لحظياً.
 
-### 💾 5. التخزين المحلي السريع (Local Persistence)
-- نظام تفضيل (Bookmarking) مدمج وسريع، يحفظ حالة المانجات المفضلة محلياً لضمان تجربة مستخدم خالية من أي تأخير (Zero-Latency State).
+### ⚡ 3. كاسر الحماية والسحب الذكي (Smart Scraper & Bypasser)
+* **نظام التخطي الهجين:** استخدام محرك متصفح خفي لتخطي حمايات المواقع (Cloudflare / JS Challenges) وسحب البيانات الصافية بسرعة فائقة باستخدام `Jsoup`.
+* **تنظيف النصوص المتقدم:** فلترة ذكية لفقرات الروايات لإزالة الإعلانات، النصوص المزعجة، والمسافات البيضاء العشوائية.
+
+### 🔔 4. المزامنة الذكية والإشعارات (Background Sync)
+* بفضل مكتبة `WorkManager`، يعمل التطبيق بصمت كل 12 ساعة للتحقق من المفضلات.
+* **إشعارات فورية (Push Notifications):** إرسال إشعار أنيق فور صدور فصل جديد لأي عمل تمت إضافته للمفضلة.
+
+### 💾 5. الأداء وقواعد البيانات (Performance & Offline Support)
+* **Room Database:** حفظ الفصول (صور ونصوص JSON) محلياً لسرعة الوصول والقراءة بدون إنترنت.
+* **بحث فوري:** ميزة البحث السريع برقم الفصل للقفز مباشرة في الأعمال الطويلة (Real-time Filtering).
+* **ProGuard / R8 Ready:** كود مضغوط ومحمي بالكامل بفضل قواعد استثناء دقيقة، لضمان استقرار التطبيق وسرعته كنسخة إنتاجية (Production-Ready).
+* **Localization Ready:** كود نظيف خالٍ من النصوص الثابتة (Hardcoded Strings)، جاهز للترجمة لأي لغة.
+
+---
+
+## 🛠️ التقنيات المستخدمة (Tech Stack)
+* **الواجهة:** Jetpack Compose, Material 3, Accompanist (System UI).
+* **الهندسة:** MVVM (Model-View-ViewModel), Clean Architecture Principles.
+* **إدارة البيانات:** Room Database, Kotlin Flow / StateFlow, Coroutines.
+* **الشبكات والسحب:** Jsoup (HTML Parsing), Coil (Image Loading & Caching).
+* **المهام الخلفية:** WorkManager.
+
+---
+
+## 🚀 البناء والتثبيت (Build & Install)
+1. قم باستنساخ المشروع (Clone).
+2. تأكد من استخدام أحدث إصدار من **Android Studio**.
+3. التطبيق يدعم الـ `minifyEnabled true`. إذا واجهت مشكلة في الـ Build النهائي، تأكد من مراجعة قواعد `proguard-rules.pro`.
+4. اضغط `Run` واستمتع بتجربة القراءة الأفضل على الإطلاق!
+
+---
+*صُنع بشغف، ليُقدم تجربة قراءة لا تُضاهى.* ☕💻
 
 ---
 
