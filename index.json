@@ -1,11 +1,11 @@
 [
   {
-    "id": "azora_manga",
-    "name": "Azora Manga",
+    "id": "azora",
+    "name": "Azora",
     "version": "1.0.1",
     "lang": "ar",
     "baseUrl": "https://azorafly.com",
     "scriptUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/azora.js",
-    "iconUrl": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/icons/azora.png"
+    "iconUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/c925c7f3-2310-4e90-9b62-7fae04fe1c36.webp"
   }
 ]
