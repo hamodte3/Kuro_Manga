@@ -18,22 +18,43 @@ function fetchLatestManga(page, query) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
 
-    var cards = html.split('class="relative h-full p-1 sm:p-2');
-    for (var i = 1; i < cards.length; i++) {
-        var card = cards[i];
-        var linkMatch = /href=["'](\/series\/[^"']+)["']/i.exec(card);
-        if (!linkMatch) continue;
-        var mangaUrl = "https://azorafly.com" + linkMatch[1];
+    // صيد أي رابط للمانجا في الصفحة
+    var linkRegex = /<a[^>]+href=["'](\/series\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+    var match;
 
-        var titleMatch = /class=["'][^"']*line-clamp-2[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(card);
-        var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
-        if (title === "الحالة" || title === "مانهوا" || title === "" || title === "Unknown") continue;
+    while ((match = linkRegex.exec(html)) !== null) {
+        var link = match[1];
+        var innerHtml = match[2];
 
-        var coverMatch = /<img[^>]+(?:src|data-src)=["']([^"']+)["']/i.exec(card);
-        var coverUrl = coverMatch ? coverMatch[1] : "";
+        // تجاهل روابط الفصول
+        if (link.includes("/chapter-") || link.includes("/chapter/")) continue;
+
+        var mangaUrl = "https://azorafly.com" + link;
+
+        // صيد الغلاف
+        var coverMatch = /<img[^>]+(?:src|data-src)=["']([^"']+)["']/i.exec(innerHtml);
+        if (!coverMatch) continue; 
+        var coverUrl = coverMatch[1];
         if (coverUrl.startsWith("/")) coverUrl = "https://azorafly.com" + coverUrl;
 
-        list.push({ title: title, coverUrl: coverUrl, mangaUrl: mangaUrl });
+        // صيد العنوان
+        var title = "Unknown";
+        var altMatch = /alt=["']([^"']+)["']/i.exec(coverMatch[0]);
+        if (altMatch && altMatch[1] && !altMatch[1].includes("صورة") && !altMatch[1].includes("cover")) {
+            title = altMatch[1];
+        } else {
+            var textMatch = /class=["'][^"']*line-clamp[^"']*["'][^>]*>([\s\S]*?)<\//i.exec(innerHtml);
+            if (textMatch) title = textMatch[1];
+        }
+
+        title = decodeHTML(cleanHtml(title));
+        if (title === "الحالة" || title === "مانهوا" || title === "" || title === "Unknown" || title.includes("الفصل")) continue;
+
+        // منع التكرار
+        var exists = list.find(function(m) { return m.mangaUrl === mangaUrl; });
+        if (!exists) {
+            list.push({ title: title, coverUrl: coverUrl, mangaUrl: mangaUrl });
+        }
     }
     return JSON.stringify(list);
 }
@@ -52,7 +73,6 @@ function fetchMangaDetails(url) {
     var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
 
     var chapters = [];
-    // تفكيك الكود لصيد الفصول بدقة عالية متجاهلين تعقيد الـ HTML
     var chunks = html.split('<a ');
     for (var i = 1; i < chunks.length; i++) {
         var chunk = chunks[i];
@@ -62,7 +82,6 @@ function fetchMangaDetails(url) {
             var titleMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(chunk);
             var text = "الفصل";
             if (titleMatch) {
-                // إزالة الأكواد المخفية اللي كانت تسبب المشكلة
                 text = titleMatch[1].replace(//g, "").replace(/(<([^>]+)>)/gi, "").trim();
             }
             var exists = chapters.find(function(ch) { return ch.chapterUrl === link; });
@@ -86,7 +105,6 @@ function fetchChapterPages(url) {
     if (!html) return "[]";
 
     var pages = [];
-    // تفكيك الصور وصيد الرابط سواء كان قبل أو بعد الكلاس
     var chunks = html.split('<img ');
     for (var i = 1; i < chunks.length; i++) {
         var chunk = chunks[i];
