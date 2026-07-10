@@ -133,6 +133,11 @@ function fetchMangaDetails(url){
     
     var chapters = [];
     var chunks = html.split('<a ');
+    
+    // 🚀 خدعة التمويه: كسرنا الكلمة عشان المحرك ما يحسبها تعليق
+    var cStartTag = "<" + "!--";
+    var cEndTag = "--" + ">";
+    
     for(var i=1; i<chunks.length; i++){
         var chunk = chunks[i];
         
@@ -154,7 +159,9 @@ function fetchMangaDetails(url){
                 var spanEnd = chunk.indexOf('</', spanClose);
                 if(spanClose !== -1 && spanEnd !== -1){
                     var rawText = chunk.substring(spanClose + 1, spanEnd);
-                    while(rawText.indexOf("", cStart);
+                    while(rawText.indexOf(cStartTag) !== -1){
+                        var cStart = rawText.indexOf(cStartTag);
+                        var cEnd = rawText.indexOf(cEndTag, cStart);
                         if(cEnd !== -1) {
                             rawText = rawText.substring(0, cStart) + rawText.substring(cEnd + 3);
                         } else {
