@@ -43,20 +43,40 @@ function fetchMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
 
+    // 1. جلب العنوان
     var titleMatch = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
     var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
     
+    // 2. جلب الغلاف
     var coverMatch = /<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i.exec(html);
     var coverUrl = coverMatch ? coverMatch[1] : "";
 
+    // 3. جلب الوصف
     var descMatch = /itemprop=["']description["'][^>]*>([\s\S]*?)<\/(?:div|p|span)>/i.exec(html);
     var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
     
+    // 4. صيد الفصول (النسخة الشاملة)
     var chapters = [];
-    var chRegex = /href=["']([^"']+\/chapter-[^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+    var chRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
     var match;
+    
     while ((match = chRegex.exec(html)) !== null) {
-        chapters.push({ title: match[2].trim(), chapterUrl: "https://azorafly.com" + match[1] });
+        var link = match[1];
+        var text = decodeHTML(cleanHtml(match[2]));
+        
+        // إذا كان الرابط أو النص يحتوي على دليل إنه فصل
+        if (link.toLowerCase().includes("chapter") || text.includes("فصل") || text.toLowerCase().includes("chapter")) {
+            // تنظيف الرابط إذا كان نسبي (يبدأ بـ /)
+            if (!link.startsWith("http")) {
+                link = "https://azorafly.com" + (link.startsWith("/") ? "" : "/") + link;
+            }
+            
+            // تجنب تكرار الفصول إذا الموقع يكرر الروابط
+            var exists = chapters.find(function(ch) { return ch.chapterUrl === link; });
+            if (!exists) {
+                chapters.push({ title: text, chapterUrl: link });
+            }
+        }
     }
 
     return JSON.stringify({ 
@@ -67,6 +87,7 @@ function fetchMangaDetails(url) {
         chapters: chapters 
     });
 }
+
 
 function fetchChapterPages(url) {
     var html = KuroNet.getHtml(url);
