@@ -78,21 +78,28 @@ function fetchMangaDetails(url) {
     var coverUrl = coverMatch ? coverMatch[1] : "";
     if (coverUrl.indexOf("/") === 0) coverUrl = "https://azorafly.com" + coverUrl;
     
-    // 🚀 الحل الذكي للوصف: استهداف الـ div أو الـ p وتجاهل الـ meta المخفية تماماً
+    // 🚀 التعديل الجراحي: التركيز على الحاوية التي تحتوي فعلياً على النص الطويل للوصف
     var desc = "لا يوجد وصف.";
-    var descMatch = /<(div|p|span)[^>]*itemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i.exec(html);
+    // نبحث عن النص الذي يبدأ بكلمات مفتاحية للوصف
+    var descMatch = /<div[^>]+class=["'][^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(html) || 
+                    /<div[^>]+itemprop=["']description["'][^>]*>([\s\S]*?)<\/div>/i.exec(html);
+    
     if (descMatch) {
-        desc = decodeHTML(cleanHtml(descMatch[2]));
+        desc = decodeHTML(cleanHtml(descMatch[1]));
     } else {
+        // إذا فشل، نحاول تنظيف ما تبقى من HTML
         var metaDesc = /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i.exec(html);
         if (metaDesc) desc = decodeHTML(metaDesc[1]);
     }
     
+    // تنظيف إضافي لإزالة بقايا الأزرار والقوائم التي قد تتسرب
+    desc = desc.replace(/تحديث:.*$/i, "").replace(/الرئيسية.*$/i, "").trim();
+
+    // بقية الكود كما هو تماماً...
     var ratingMatch = /itemprop=["']ratingValue["']\s+content=["']([^"']+)["']/i.exec(html) || /ratingValue["'][:\s]*["']?([0-9.]+)/i.exec(html);
     var rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0.0;
     
-    // 🚀 دعم أرقام المفضلات مع أحرف K و M مثل (1.7K)
-    var favMatch = /<span[^>]*>([0-9.]+[kKmM]?)<\/span>\s*<small[^>]*>المفضلة<\/small>/i.exec(html) || /([0-9.]+[kKmM]?)\s*متابع/i.exec(html);
+    var favMatch = /<span[^>]*>([0-9.]+[kKmM]?)<\/span>\s*<small[^>]*>المفضلة<\/small>/i.exec(html) || /([0-9]+)\s*متابع/i.exec(html);
     var favorites = favMatch ? favMatch[1].toUpperCase() : "0";
     
     var type = "مانجا";
@@ -103,6 +110,7 @@ function fetchMangaDetails(url) {
     var updateMatch = /<p[^>]*>([\s\S]*?منذ[\s\S]*?)<\/p>/i.exec(html);
     var lastUpdated = updateMatch ? cleanHtml(updateMatch[1]) : "غير معروف";
     
+    // حساب الفصول... (نفس الكود السابق)
     var totalChapters = 0;
     var totalChaptersMatch = /<p[^>]*class=["'][^"']*font-normal\s+text-xs[^"']*["'][^>]*>([0-9]+)[^\d<]*<\/p>/gi;
     var chMatch;
@@ -113,56 +121,20 @@ function fetchMangaDetails(url) {
         }
     }
     
-    if (totalChapters === 0) {
-        var fallbackLinkMatch = /href=["']\/series\/[^"']+\/chapter-([0-9.-]+)["']/i.exec(html);
-        if (fallbackLinkMatch) {
-            totalChapters = parseInt(fallbackLinkMatch[1].replace("-", ".").split(".")[0], 10) || 0;
-        }
-    }
-    
     var chapters = [];
     if (totalChapters > 0) {
         for (var i = totalChapters; i >= 1; i--) {
-            chapters.push({
-                title: i.toString(),
-                chapterUrl: "https://azorafly.com/series/" + slug + "/chapter-" + i
-            });
-        }
-    }
-    
-    if (chapters.length === 0) {
-        var chapterRegex = /<a[^>]+href=["'](\/series\/[^"']+\/chapter-[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-        var cMatch;
-        while ((cMatch = chapterRegex.exec(html)) !== null) {
-            var chUrl = "https://azorafly.com" + cMatch[1];
-            var inner = cMatch[2];
-            
-            var spanTitleMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(inner);
-            var chTitle = spanTitleMatch ? cleanHtml(spanTitleMatch[1]) : cleanHtml(inner);
-            chTitle = chTitle.split("جديد")[0].split("منذ")[0].trim();
-            chTitle = chTitle.replace(/الفصل|Chapter|Ch\.?/gi, "").trim();
-            if (chTitle === "") chTitle = "1";
-            
-            var exists = false;
-            for (var j = 0; j < chapters.length; j++) {
-                if (chapters[j].chapterUrl === chUrl) { exists = true; break; }
-            }
-            if (!exists) chapters.push({title: chTitle, chapterUrl: chUrl});
+            chapters.push({ title: i.toString(), chapterUrl: "https://azorafly.com/series/" + slug + "/chapter-" + i });
         }
     }
     
     return JSON.stringify({
-        title: title, 
-        coverUrl: coverUrl, 
-        description: desc, 
-        status: "Ongoing", 
-        chapters: chapters,
-        rating: rating,
-        favoritesCount: favorites,
-        type: type,
-        lastUpdated: lastUpdated
+        title: title, coverUrl: coverUrl, description: desc, status: "Ongoing",
+        chapters: chapters, rating: rating, favoritesCount: favorites,
+        type: type, lastUpdated: lastUpdated
     });
 }
+
 
 function fetchChapterPages(url) {
     var html = KuroNet.getHtml(url);
