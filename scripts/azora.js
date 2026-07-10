@@ -38,11 +38,14 @@ function fetchLatestManga(page, query) {
 function fetchMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
-    
-    // ... (نفس كود العنوان والوصف اللي عندك)
+
+    var titleMatch = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
+    var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
+    var descMatch = /itemprop=["']description["'][^>]*>([\s\S]*?)<\/(?:div|p|span)>/i.exec(html);
+    var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
     
     var chapters = [];
-    // هذا Regex لصيد الفصول من الموقع (تأكد إنه يطابق موقع أزورا الحالي)
+    // هذا هو الجزء اللي كان ناقصك لسحب الفصول
     var chRegex = /href=["']([^"']+\/chapter-[^"']+)["'][^>]*>([^<]+)<\/a>/gi;
     var match;
     while ((match = chRegex.exec(html)) !== null) {
@@ -51,9 +54,19 @@ function fetchMangaDetails(url) {
 
     return JSON.stringify({ 
         title: title, 
-        coverUrl: coverUrl, 
         description: desc, 
         status: "Ongoing", 
         chapters: chapters 
     });
+}
+
+function fetchChapterPages(url) {
+    var html = KuroNet.getHtml(url);
+    var pages = [];
+    var imgRegex = /<img[^>]+data-reader-page-image[^>]*src=["']([^"']+)["']/gi;
+    var match;
+    while ((match = imgRegex.exec(html)) !== null) {
+        pages.push(match[1]);
+    }
+    return JSON.stringify(pages);
 }
