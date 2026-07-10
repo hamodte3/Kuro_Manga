@@ -11,7 +11,6 @@ function decodeHTML(text) {
 
 function cleanHtml(text) {
     if (!text) return "";
-    // 🚀 الإضافة السحرية: حرق أي أكواد جافاسكربت أو ستايل مخفية في النص
     text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
     text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
     var commentRegex = new RegExp(c_start + "[\\s\\S]*?" + c_end, "g");
@@ -79,17 +78,23 @@ function fetchMangaDetails(url) {
     var coverUrl = coverMatch ? coverMatch[1] : "";
     if (coverUrl.indexOf("/") === 0) coverUrl = "https://azorafly.com" + coverUrl;
     
-    // سحب الوصف بعد ما تأكدنا أن دالة cleanHtml راح تحرق الـ scripts
-    var descMatch = /itemprop=["']description["'][^>]*>([\s\S]*?)<\/(?:div|p|span)>/i.exec(html);
-    var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
+    // 🚀 الحل الذكي للوصف: استهداف الـ div أو الـ p وتجاهل الـ meta المخفية تماماً
+    var desc = "لا يوجد وصف.";
+    var descMatch = /<(div|p|span)[^>]*itemprop=["']description["'][^>]*>([\s\S]*?)<\/\1>/i.exec(html);
+    if (descMatch) {
+        desc = decodeHTML(cleanHtml(descMatch[2]));
+    } else {
+        var metaDesc = /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']/i.exec(html);
+        if (metaDesc) desc = decodeHTML(metaDesc[1]);
+    }
     
     var ratingMatch = /itemprop=["']ratingValue["']\s+content=["']([^"']+)["']/i.exec(html) || /ratingValue["'][:\s]*["']?([0-9.]+)/i.exec(html);
     var rating = ratingMatch ? parseFloat(ratingMatch[1]) : 0.0;
     
-    var favMatch = /<span[^>]*>([0-9]+)<\/span>\s*<small[^>]*>المفضلة<\/small>/i.exec(html) || /([0-9]+)\s*متابع/i.exec(html);
-    var favorites = favMatch ? favMatch[1] : "0";
+    // 🚀 دعم أرقام المفضلات مع أحرف K و M مثل (1.7K)
+    var favMatch = /<span[^>]*>([0-9.]+[kKmM]?)<\/span>\s*<small[^>]*>المفضلة<\/small>/i.exec(html) || /([0-9.]+[kKmM]?)\s*متابع/i.exec(html);
+    var favorites = favMatch ? favMatch[1].toUpperCase() : "0";
     
-    // سحب النوع بشكل مباشر ونظيف جداً
     var type = "مانجا";
     if (html.indexOf("مانهوا") !== -1) type = "مانهوا";
     else if (html.indexOf("مانها") !== -1) type = "مانها";
@@ -119,7 +124,7 @@ function fetchMangaDetails(url) {
     if (totalChapters > 0) {
         for (var i = totalChapters; i >= 1; i--) {
             chapters.push({
-                title: i.toString(), // 🚀 تم مسح كلمة "الفصل" وتوليد الرقم صافي
+                title: i.toString(),
                 chapterUrl: "https://azorafly.com/series/" + slug + "/chapter-" + i
             });
         }
@@ -135,7 +140,6 @@ function fetchMangaDetails(url) {
             var spanTitleMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(inner);
             var chTitle = spanTitleMatch ? cleanHtml(spanTitleMatch[1]) : cleanHtml(inner);
             chTitle = chTitle.split("جديد")[0].split("منذ")[0].trim();
-            // 🚀 تمسح كل الكلمات الزايدة وتخلي الرقم
             chTitle = chTitle.replace(/الفصل|Chapter|Ch\.?/gi, "").trim();
             if (chTitle === "") chTitle = "1";
             
