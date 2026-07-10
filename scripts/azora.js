@@ -18,7 +18,6 @@ function fetchLatestManga(page, query) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
 
-    // صيد أي رابط للمانجا في الصفحة
     var linkRegex = /<a[^>]+href=["'](\/series\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
     var match;
 
@@ -26,32 +25,44 @@ function fetchLatestManga(page, query) {
         var link = match[1];
         var innerHtml = match[2];
 
-        // تجاهل روابط الفصول
-        if (link.includes("/chapter-") || link.includes("/chapter/")) continue;
+        if (link.includes("/chapter-") || link.includes("/chapter/")) {
+            continue;
+        }
 
         var mangaUrl = "https://azorafly.com" + link;
 
-        // صيد الغلاف
         var coverMatch = /<img[^>]+(?:src|data-src)=["']([^"']+)["']/i.exec(innerHtml);
-        if (!coverMatch) continue; 
+        if (!coverMatch) {
+            continue;
+        }
+        
         var coverUrl = coverMatch[1];
         if (coverUrl.startsWith("/")) coverUrl = "https://azorafly.com" + coverUrl;
 
-        // صيد العنوان
         var title = "Unknown";
         var altMatch = /alt=["']([^"']+)["']/i.exec(coverMatch[0]);
         if (altMatch && altMatch[1] && !altMatch[1].includes("صورة") && !altMatch[1].includes("cover")) {
             title = altMatch[1];
         } else {
             var textMatch = /class=["'][^"']*line-clamp[^"']*["'][^>]*>([\s\S]*?)<\//i.exec(innerHtml);
-            if (textMatch) title = textMatch[1];
+            if (textMatch) {
+                title = textMatch[1];
+            }
         }
 
         title = decodeHTML(cleanHtml(title));
-        if (title === "الحالة" || title === "مانهوا" || title === "" || title === "Unknown" || title.includes("الفصل")) continue;
+        if (title === "الحالة" || title === "مانهوا" || title === "" || title === "Unknown" || title.includes("الفصل")) {
+            continue;
+        }
 
-        // منع التكرار
-        var exists = list.find(function(m) { return m.mangaUrl === mangaUrl; });
+        var exists = false;
+        for (var k = 0; k < list.length; k++) {
+            if (list[k].mangaUrl === mangaUrl) {
+                exists = true;
+                break;
+            }
+        }
+        
         if (!exists) {
             list.push({ title: title, coverUrl: coverUrl, mangaUrl: mangaUrl });
         }
@@ -79,12 +90,20 @@ function fetchMangaDetails(url) {
         var hrefMatch = /href=["'](\/series\/[^"']+\/chapter-[^"']+)["']/i.exec(chunk);
         if (hrefMatch) {
             var link = "https://azorafly.com" + hrefMatch[1];
-            var titleMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(chunk);
+            var spanMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(chunk);
             var text = "الفصل";
-            if (titleMatch) {
-                text = titleMatch[1].replace(//g, "").replace(/(<([^>]+)>)/gi, "").trim();
+            if (spanMatch) {
+                text = spanMatch[1].replace(//g, "").replace(/(<([^>]+)>)/gi, "").trim();
             }
-            var exists = chapters.find(function(ch) { return ch.chapterUrl === link; });
+            
+            var exists = false;
+            for (var j = 0; j < chapters.length; j++) {
+                if (chapters[j].chapterUrl === link) {
+                    exists = true;
+                    break;
+                }
+            }
+            
             if (!exists) {
                 chapters.push({ title: text, chapterUrl: link });
             }
