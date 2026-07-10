@@ -38,18 +38,22 @@ function fetchLatestManga(page, query) {
 function fetchMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
-    var urlParts = url.split("?")[0].split("/");
-    var slug = urlParts[urlParts.length - 1];
-    var titleMatch = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
-    var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
-    var coverMatch = /<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i.exec(html);
-    var coverUrl = coverMatch ? coverMatch[1] : "";
-    var descMatch = /itemprop=["']description["'][^>]*>([\s\S]*?)<\/(?:div|p|span)>/i.exec(html);
-    var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
-    return JSON.stringify({ title: title, coverUrl: coverUrl, description: desc, status: "Ongoing", chapters: [] });
-}
+    
+    // ... (نفس كود العنوان والوصف اللي عندك)
+    
+    var chapters = [];
+    // هذا Regex لصيد الفصول من الموقع (تأكد إنه يطابق موقع أزورا الحالي)
+    var chRegex = /href=["']([^"']+\/chapter-[^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+    var match;
+    while ((match = chRegex.exec(html)) !== null) {
+        chapters.push({ title: match[2].trim(), chapterUrl: "https://azorafly.com" + match[1] });
+    }
 
-function fetchChapterPages(url) {
-    var html = KuroNet.getHtml(url);
-    return "[]";
+    return JSON.stringify({ 
+        title: title, 
+        coverUrl: coverUrl, 
+        description: desc, 
+        status: "Ongoing", 
+        chapters: chapters 
+    });
 }
