@@ -21,19 +21,18 @@ function fetchLatestManga(page, query) {
     var cards = html.split('class="relative h-full p-1 sm:p-2');
     for (var i = 1; i < cards.length; i++) {
         var card = cards[i];
-        
-        var linkMatch = /<a[^>]+href=["'](\/series\/[^"']+)["']/i.exec(card);
+        var linkMatch = /href=["'](\/series\/[^"']+)["']/i.exec(card);
         if (!linkMatch) continue;
         var mangaUrl = "https://azorafly.com" + linkMatch[1];
-        
+
         var titleMatch = /class=["'][^"']*line-clamp-2[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(card);
         var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
         if (title === "الحالة" || title === "مانهوا" || title === "" || title === "Unknown") continue;
-        
+
         var coverMatch = /<img[^>]+(?:src|data-src)=["']([^"']+)["']/i.exec(card);
         var coverUrl = coverMatch ? coverMatch[1] : "";
         if (coverUrl.startsWith("/")) coverUrl = "https://azorafly.com" + coverUrl;
-        
+
         list.push({ title: title, coverUrl: coverUrl, mangaUrl: mangaUrl });
     }
     return JSON.stringify(list);
@@ -43,35 +42,29 @@ function fetchMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
 
-    // 1. جلب العنوان
     var titleMatch = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
     var title = titleMatch ? decodeHTML(cleanHtml(titleMatch[1])) : "Unknown";
-    
-    // 2. جلب الغلاف
+
     var coverMatch = /<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i.exec(html);
     var coverUrl = coverMatch ? coverMatch[1] : "";
 
-    // 3. جلب الوصف
     var descMatch = /itemprop=["']description["'][^>]*>([\s\S]*?)<\/(?:div|p|span)>/i.exec(html);
     var desc = descMatch ? decodeHTML(cleanHtml(descMatch[1])) : "لا يوجد وصف.";
-    
-    // 4. صيد الفصول (النسخة الشاملة)
+
     var chapters = [];
-    var chRegex = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-    var match;
-    
-    while ((match = chRegex.exec(html)) !== null) {
-        var link = match[1];
-        var text = decodeHTML(cleanHtml(match[2]));
-        
-        // إذا كان الرابط أو النص يحتوي على دليل إنه فصل
-        if (link.toLowerCase().includes("chapter") || text.includes("فصل") || text.toLowerCase().includes("chapter")) {
-            // تنظيف الرابط إذا كان نسبي (يبدأ بـ /)
-            if (!link.startsWith("http")) {
-                link = "https://azorafly.com" + (link.startsWith("/") ? "" : "/") + link;
+    // تفكيك الكود لصيد الفصول بدقة عالية متجاهلين تعقيد الـ HTML
+    var chunks = html.split('<a ');
+    for (var i = 1; i < chunks.length; i++) {
+        var chunk = chunks[i];
+        var hrefMatch = /href=["'](\/series\/[^"']+\/chapter-[^"']+)["']/i.exec(chunk);
+        if (hrefMatch) {
+            var link = "https://azorafly.com" + hrefMatch[1];
+            var titleMatch = /<span[^>]*font-medium[^>]*>([\s\S]*?)<\/span>/i.exec(chunk);
+            var text = "الفصل";
+            if (titleMatch) {
+                // إزالة الأكواد المخفية اللي كانت تسبب المشكلة
+                text = titleMatch[1].replace(//g, "").replace(/(<([^>]+)>)/gi, "").trim();
             }
-            
-            // تجنب تكرار الفصول إذا الموقع يكرر الروابط
             var exists = chapters.find(function(ch) { return ch.chapterUrl === link; });
             if (!exists) {
                 chapters.push({ title: text, chapterUrl: link });
@@ -88,16 +81,21 @@ function fetchMangaDetails(url) {
     });
 }
 
-
 function fetchChapterPages(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
-    
+
     var pages = [];
-    var imgRegex = /<img[^>]+data-reader-page-image[^>]*src=["']([^"']+)["']/gi;
-    var match;
-    while ((match = imgRegex.exec(html)) !== null) {
-        pages.push(match[1]);
+    // تفكيك الصور وصيد الرابط سواء كان قبل أو بعد الكلاس
+    var chunks = html.split('<img ');
+    for (var i = 1; i < chunks.length; i++) {
+        var chunk = chunks[i];
+        if (chunk.includes("data-reader-page-image")) {
+            var srcMatch = /src=["']([^"']+)["']/i.exec(chunk);
+            if (srcMatch) {
+                pages.push(srcMatch[1]);
+            }
+        }
     }
     return JSON.stringify(pages);
 }
