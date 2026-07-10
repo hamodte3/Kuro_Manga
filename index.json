@@ -5,7 +5,7 @@
     "version": "1.0.1",
     "lang": "ar",
     "baseUrl": "https://azorafly.com",
-    "scriptUrl": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/scripts/azora.js",
+    "scriptUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/azora.js",
     "iconUrl": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/icons/azora.png"
   }
 ]
