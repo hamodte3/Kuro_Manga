@@ -1,5 +1,4 @@
-// استدعاء مكتبة Jsoup من داخل تطبيق الأندرويد مباشرة عبر Rhino!
-var Jsoup = org.jsoup.Jsoup;
+var Jsoup = Packages.org.jsoup.Jsoup;
 
 function fetchLatestManga(page, query) {
     var url = "https://azorafly.com/series";
