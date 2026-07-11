@@ -1,65 +1,41 @@
-// خدعة التمويه لمحرك Rhino
-var c_start = "<" + "!--";
-var c_end = "--" + ">";
-
-function decodeHTML(text) {
-    if (!text) return "";
-    return text.replace(/&#([0-9]{1,4});/gi, function(m, n) { return String.fromCharCode(parseInt(n, 10)); })
-               .replace(/&#x([a-f0-9]+);/gi, function(m, h) { return String.fromCharCode(parseInt(h, 16)); })
-               .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-}
-
-function cleanHtml(text) {
-    if (!text) return "";
-    text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "");
-    text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
-    var commentRegex = new RegExp(c_start + "[\\s\\S]*?" + c_end, "g");
-    text = text.replace(commentRegex, "");
-    return text.replace(/(<([^>]+)>)/gi, "").trim();
-}
+// استدعاء مكتبة Jsoup من داخل تطبيق الأندرويد مباشرة عبر Rhino!
+var Jsoup = org.jsoup.Jsoup;
 
 function fetchLatestManga(page, query) {
-    var list = [];
     var url = "https://azorafly.com/series";
-    if (query) { 
-        url = "https://azorafly.com/series?searchTerm=" + encodeURIComponent(query); 
+    if (query) {
+        url += "?searchTerm=" + encodeURIComponent(query);
     } else if (page === 1) {
         url = "https://azorafly.com/series";
-    } else { 
-        url = "https://azorafly.com/series?page=" + page; 
+    } else {
+        url += "?page=" + page;
     }
-    
+
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
-    
-    var cards = html.split('class="relative h-full');
-    for (var i = 1; i < cards.length; i++) {
-        var card = cards[i];
-        
-        var linkMatch = /href=["'](\/series\/[^"']+)["']/i.exec(card);
-        if (!linkMatch) continue;
-        var link = linkMatch[1];
-        if (link.indexOf("/chapter-") !== -1 || link.indexOf("/chapter/") !== -1) continue;
-        
-        var mangaUrl = "https://azorafly.com" + link;
-        
-        var coverMatch = /<img[^>]+(?:src|data-src)=["']([^"']+)["']/i.exec(card);
-        if (!coverMatch) continue;
-        var coverUrl = coverMatch[1];
-        if (coverUrl.indexOf("/") === 0) coverUrl = "https://azorafly.com" + coverUrl;
-        
-        var title = "Unknown";
-        var titleMatch = /class=["'][^"']*line-clamp[^"']*["'][^>]*>([\s\S]*?)<\//i.exec(card) || /alt=["']([^"']+)["']/i.exec(card);
-        if (titleMatch) title = titleMatch[1];
-        
-        title = decodeHTML(cleanHtml(title));
-        if (title === "الحالة" || title === "النوع" || title === "مانهوا" || title === "" || title.indexOf("الفصل") !== -1) continue;
-        
-        var exists = false;
-        for (var k = 0; k < list.length; k++) {
-            if (list[k].mangaUrl === mangaUrl) { exists = true; break; }
+
+    // تحويل النص إلى Jsoup Document
+    var doc = Jsoup.parse(html, "https://azorafly.com");
+    var list = [];
+    var map = {};
+
+    var containers = doc.select("div:has(a.text-foreground[href^='/series/'])");
+    for (var i = 0; i < containers.size(); i++) {
+        var container = containers.get(i);
+        var link = container.selectFirst("a.text-foreground[href^='/series/']:not([href*='/chapter-'])");
+        if (!link) continue;
+
+        var title = link.text().trim();
+        if (title === "الحالة" || title === "مانهوا") continue;
+
+        var img = container.selectFirst("img.object-cover");
+        var coverUrl = img ? (img.attr("abs:src") || img.attr("src")) : "";
+        var mangaUrl = link.attr("abs:href") || ("https://azorafly.com" + link.attr("href"));
+
+        if (!map[mangaUrl]) {
+            map[mangaUrl] = true;
+            list.push({ title: title, coverUrl: coverUrl, mangaUrl: mangaUrl });
         }
-        if (!exists) list.push({title: title, coverUrl: coverUrl, mangaUrl: mangaUrl});
     }
     return JSON.stringify(list);
 }
@@ -67,85 +43,198 @@ function fetchLatestManga(page, query) {
 function fetchMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
-    
-    // ... (نفس كود العنوان والغلاف السابق)
-    
-    // 🚀 التعديل الذكي: استخراج رقم المفضلات كأرقام فقط (Hardcoded Logic)
-    // نبحث عن أي رقم متبوع بـ K أو M أو رقم صافي قريب من كلمة "المفضلة"
-    var favMatch = /([0-9.]+[kKmM]?)\s*<small[^>]*>المفضلة<\/small>/i.exec(html) || 
-                   /([0-9.]+[kKmM]?)\s*متابع/i.exec(html);
-    
-    var favorites = "0";
-    if (favMatch) {
-        var rawFav = favMatch[1].toUpperCase();
-        // هنا نضمن أننا نرسل الرقم كما هو أو مع تصنيفه، والتطبيق سيعرف التعامل معه
-        favorites = rawFav; 
+
+    var doc = Jsoup.parse(html, url);
+    var slug = url.substring(url.lastIndexOf("/") + 1).split("?")[0];
+
+    // العنوان
+    var title = "غير معروف";
+    var h1s = doc.select("h1");
+    for (var i = 0; i < h1s.size(); i++) {
+        var text = h1s.get(i).text().trim();
+        if (text !== "الحالة" && text !== "النوع") {
+            title = text; break;
+        }
     }
 
-    // 🚀 تنظيف الوصف: إزالة أي شيء لا يبدأ بنص إبداعي للقصة
-    var desc = "لا يوجد وصف.";
-    var descMatch = /<div[^>]+class=["'][^"']*description[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(html);
-    if (descMatch) {
-        var rawDesc = cleanHtml(descMatch[1]);
-        // قص أي جملة تبدأ بكلمات غريبة قد تظهر قبل القصة
-        desc = rawDesc.split(/(تحديث:|\. الرئيسية|\. قائمة)/i)[0].trim();
+    // الغلاف
+    var coverImg = doc.selectFirst("meta[property=og:image]");
+    var coverUrl = coverImg ? coverImg.attr("content").trim() : "";
+    if (!coverUrl) {
+        var img2 = doc.selectFirst("div.relative.w-full.h-full img.object-cover, img.object-cover") || doc.select("img").first();
+        if (img2) coverUrl = img2.attr("abs:src") || img2.attr("src");
     }
 
-    // ... (بقية كود الفصول والنوع كما هو)
-    
+    // الوصف
+    var descElem = doc.selectFirst("div[itemprop='description']");
+    var description = descElem ? descElem.text().trim() : "لا يوجد وصف.";
+
+    // التقييم
+    var ratingMeta = doc.selectFirst("meta[itemprop=ratingValue]");
+    var rating = ratingMeta ? parseFloat(ratingMeta.attr("content")) : 0.0;
+    if (isNaN(rating)) rating = 0.0;
+
+    // المفضلات
+    var favSmall = doc.select("small:contains(المفضلة)");
+    var favoritesCount = "0";
+    if (favSmall.size() > 0) {
+        var prevSpan = favSmall.first().previousElementSibling();
+        if (prevSpan) favoritesCount = prevSpan.text().trim();
+    }
+
+    // النوع
+    var typeElem = doc.select("span.border");
+    var type = "مانجا";
+    for (var k = 0; k < typeElem.size(); k++) {
+        var tText = typeElem.get(k).text();
+        if (/مانجا|مانهوا|رواية|مانها/.test(tText)) {
+            type = tText.trim(); break;
+        }
+    }
+
+    // آخر تحديث
+    var updatedElem = doc.select("p:contains(منذ)").first();
+    var lastUpdated = updatedElem ? updatedElem.text().trim() : "غير معروف";
+
+    // الفصول
+    var totalChapters = 0;
+    var chElements = doc.select("div.inline p.font-normal.text-xs.inline.ml-1.text-foreground");
+    for (var c = 0; c < chElements.size(); c++) {
+        var cText = chElements.get(c).text();
+        if (cText.indexOf("منذ") === -1) {
+            var numStr = cText.replace(/[^0-9]/g, "");
+            if (numStr) totalChapters = parseInt(numStr, 10);
+            break;
+        }
+    }
+
+    if (totalChapters === 0) {
+        var fallbackLink = doc.selectFirst("a[href*='/chapter-']");
+        if (fallbackLink) {
+            var href = fallbackLink.attr("href");
+            var chStr = href.substring(href.lastIndexOf("chapter-") + 8).split("-")[0].split(".")[0];
+            var chNumStr = chStr.replace(/[^0-9]/g, "");
+            if (chNumStr) totalChapters = parseInt(chNumStr, 10);
+        }
+    }
+
+    var chapters = [];
+    if (totalChapters > 0) {
+        for (var i = totalChapters; i >= 1; i--) {
+            chapters.push({
+                title: i.toString(),
+                chapterUrl: "https://azorafly.com/series/" + slug + "/chapter-" + i
+            });
+        }
+    }
+
+    if (chapters.length === 0) {
+        var links = doc.select("a[href*='/chapter-'], a[href*='chapter']");
+        var mapCh = {};
+        for (var j = 0; j < links.size(); j++) {
+            var el = links.get(j);
+            var chUrl = el.attr("abs:href") || ("https://azorafly.com" + el.attr("href"));
+
+            var chTitleElem = el.selectFirst("span.font-medium, span.text-xs.sm\\:text-sm.font-medium");
+            var chTitle = chTitleElem ? chTitleElem.text().trim() : "";
+            if (chTitle === "") {
+                chTitle = el.text().split("جديد")[0].split("منذ")[0].split("يوم")[0].split("ساعة")[0].split("دقيقة")[0].trim();
+            }
+            chTitle = chTitle.replace(/(الفصل|Chapter|Ch\.?\s*)/ig, "").trim();
+            if (chTitle === "") chTitle = (j + 1).toString();
+
+            if (chUrl && !mapCh[chUrl]) {
+                mapCh[chUrl] = true;
+                chapters.push({ title: chTitle, chapterUrl: chUrl });
+            }
+        }
+    }
+
     return JSON.stringify({
-        title: title, 
-        coverUrl: coverUrl, 
-        description: desc, 
-        status: "Ongoing", 
+        title: title,
+        coverUrl: coverUrl,
+        description: description,
+        status: "Ongoing",
         chapters: chapters,
         rating: rating,
-        favoritesCount: favorites,
+        favoritesCount: favoritesCount,
         type: type,
         lastUpdated: lastUpdated
     });
 }
 
-
 function fetchChapterPages(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
-    
-    var pages = [];
-    var imgRegex = /<img[^>]+(?:data-reader-page-image|src|data-src)=["']([^"']+)["']/gi;
-    var match;
-    while ((match = imgRegex.exec(html)) !== null) {
-        var src = match[1];
-        if (src.indexOf("http") === -1) src = "https://azorafly.com" + src;
-        
-        if (src.indexOf("storage.azorafly.com") !== -1 || src.indexOf("/upload/series/") !== -1 || src.indexOf("page-") !== -1) {
-            if (!/logo|avatar|user|profile|icon|favicon/i.test(src)) {
-                var exists = false;
-                for (var i = 0; i < pages.length; i++) { if (pages[i] === src) { exists = true; break; } }
-                if (!exists) pages.push(src);
+
+    var doc = Jsoup.parse(html, url);
+    var list = [];
+    var map = {};
+
+    var processImg = function(src) {
+        if (src && src.trim() !== "" && !map[src]) {
+            map[src] = true;
+            list.push(src.trim());
+        }
+    };
+
+    var imgs1 = doc.select("img[data-reader-page-image]");
+    for (var i = 0; i < imgs1.size(); i++) {
+        var img1 = imgs1.get(i);
+        processImg(img1.attr("abs:src") || img1.attr("src") || img1.attr("data-src"));
+    }
+
+    if (list.length === 0) {
+        var imgs2 = doc.select("img.object-contain, img[alt*='Page'], img[alt*='الفصل']");
+        for (var j = 0; j < imgs2.size(); j++) {
+            var img2 = imgs2.get(j);
+            var src2 = img2.attr("abs:src") || img2.attr("src");
+            if (src2 && (src2.indexOf("storage.azorafly.com") !== -1 || src2.indexOf("/upload/series/") !== -1)) {
+                processImg(src2);
             }
         }
     }
-    return JSON.stringify(pages);
+
+    if (list.length === 0) {
+        var imgs3 = doc.select("img");
+        for (var k = 0; k < imgs3.size(); k++) {
+            var img3 = imgs3.get(k);
+            var src3 = img3.attr("abs:src") || img3.attr("data-src") || img3.attr("src");
+            if (src3 && (src3.indexOf("/upload/") !== -1 || src3.indexOf("/series/") !== -1 || src3.indexOf("page-") !== -1 || src3.indexOf("storage.azorafly") !== -1)) {
+                if (!(/logo|avatar|user|profile|icon|favicon/i.test(src3))) {
+                    processImg(src3);
+                }
+            }
+        }
+    }
+
+    return JSON.stringify(list);
 }
 
 function fetchChapterText(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
-    
+
+    var doc = Jsoup.parse(html, url);
     var paragraphs = [];
-    var novelBlockMatch = /class=["'][^"']*novel-reader-content[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(html) || /itemprop=["']articleBody["'][^>]*>([\s\S]*?)<\/section>/i.exec(html);
-    
-    if (novelBlockMatch) {
-        var block = novelBlockMatch[1];
-        var pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-        var pMatch;
-        while ((pMatch = pRegex.exec(block)) !== null) {
-            var txt = cleanHtml(pMatch[1]);
-            if (txt.length > 0 && txt !== " " && txt.indexOf("Azora") === -1) {
-                paragraphs.push(decodeHTML(txt));
+
+    var pElems = doc.select("div.novel-reader-content p");
+    if (pElems.size() > 0) {
+        for (var i = 0; i < pElems.size(); i++) {
+            var text1 = pElems.get(i).text().trim();
+            if (text1 !== "" && text1 !== " " && text1.indexOf("Azora Manga") === -1) {
+                paragraphs.push(text1);
             }
         }
     }
+
+    if (paragraphs.length === 0) {
+        var fallbackElems = doc.select("section[itemprop=articleBody] p, div.reading-content p");
+        for (var j = 0; j < fallbackElems.size(); j++) {
+            var text2 = fallbackElems.get(j).text().trim();
+            if (text2 !== "") paragraphs.push(text2);
+        }
+    }
+
     return JSON.stringify(paragraphs);
 }
