@@ -7,7 +7,7 @@
     "pkgName": "com.kuro.extension.azora"
   },
   {
-    "id": "despair",
+    "id": "despairmanga", 
     "name": "Despair Manga",
     "version": "1.1.0",
     "downloadUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/despair.js",
