@@ -25,7 +25,7 @@ function getLatestManga(page, query) {
         var rawCover = "";
         var imgElement = element.selectFirst("img");
         if (imgElement != null) rawCover = imgElement.attr("src");
-        var coverUrl = rawCover.split("?")[0]; 
+        var coverUrl = String(rawCover).split("?")[0];
         
         if (title.length > 0 && mangaUrl.length > 0) {
             list.push({
