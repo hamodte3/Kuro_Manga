@@ -47,57 +47,126 @@ function getLatestManga(page, query) {
 }
 
 function getMangaDetails(url) {
-    var baseUrl = "https://despair-manga.net";
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
-    var document = Jsoup.parse(html, baseUrl);
-    
-    var titleElem = document.selectFirst("h1.entry-title");
-    var title = titleElem != null ? String(titleElem.text()).trim() : "";
-    
-    var coverElem = document.selectFirst("img.wp-post-image");
-    var coverUrl = coverElem != null ? String(coverElem.attr("abs:src")) : "";
-    
-    var descElem = document.selectFirst("div.entry-content[itemprop=description]");
-    var description = descElem != null ? String(descElem.text()).trim() : "لا يوجد وصف";
-    
-    var ratingElem = document.selectFirst("div.numscore");
-    var rating = ratingElem != null ? parseFloat(String(ratingElem.text())) : 0.0;
+
+    var doc = Jsoup.parse(html, url);
+    var slugRaw = String(url).substring(String(url).lastIndexOf("/") + 1);
+    var slug = slugRaw;
+    if (slugRaw.indexOf("?") !== -1) {
+        slug = slugRaw.substring(0, slugRaw.indexOf("?"));
+    }
+
+    var title = "غير معروف";
+    var h1s = doc.select("h1");
+    for (var i = 0; i < h1s.size(); i++) {
+        var text = String(h1s.get(i).text()).trim();
+        if (text !== "الحالة" && text !== "النوع") {
+            title = text; break;
+        }
+    }
+
+    var coverImg = doc.selectFirst("meta[property=og:image]");
+    var coverUrl = coverImg ? String(coverImg.attr("content")).trim() : "";
+    if (!coverUrl) {
+        var img2 = doc.selectFirst("div.relative.w-full.h-full img.object-cover, img.object-cover") || doc.select("img").first();
+        if (img2) coverUrl = String(img2.attr("abs:src") || img2.attr("src"));
+    }
+
+    var descElem = doc.selectFirst("div[itemprop='description']");
+    var description = descElem ? String(descElem.text()).trim() : "لا يوجد وصف.";
+
+    var ratingMeta = doc.selectFirst("meta[itemprop=ratingValue]");
+    var rating = ratingMeta ? parseFloat(String(ratingMeta.attr("content"))) : 0.0;
     if (isNaN(rating)) rating = 0.0;
-    
-    var typeElem = document.select("span:contains(النوع) a");
-    var type = (typeElem != null && String(typeElem.text()).trim().length > 0) ? String(typeElem.text()).trim() : "مانجا";
-    
-    var chaptersList = [];
-    var chapterElements = document.select("div#chapterlist li");
-    
-    for (var i = 0; i < chapterElements.size(); i++) {
-        var element = chapterElements.get(i);
-        var link = element.selectFirst("a");
-        if (link == null) continue;
-        
-        var chUrl = String(link.attr("abs:href"));
-        var chNumElem = element.selectFirst("span.chapternum");
-        var chTitle = chNumElem != null ? String(chNumElem.text()).trim() : String(link.text()).trim();
-        
-        if (chUrl.length > 0) {
-            chaptersList.push({
-                title: chTitle,
-                chapterUrl: chUrl
+
+    var favSmall = doc.select("small:contains(المفضلة)");
+    var favoritesCount = "0";
+    if (favSmall.size() > 0) {
+        var prevSpan = favSmall.first().previousElementSibling();
+        if (prevSpan) favoritesCount = String(prevSpan.text()).trim();
+    }
+
+    var typeElem = doc.select("span.border");
+    var type = "مانجا";
+    for (var k = 0; k < typeElem.size(); k++) {
+        var tText = String(typeElem.get(k).text());
+        if (/مانجا|مانهوا|رواية|مانها/.test(tText)) {
+            type = tText.trim(); break;
+        }
+    }
+
+    var updatedElem = doc.select("p:contains(منذ)").first();
+    var lastUpdated = updatedElem ? String(updatedElem.text()).trim() : "غير معروف";
+
+    var totalChapters = 0;
+    var chElements = doc.select("div.inline p.font-normal.text-xs.inline.ml-1.text-foreground");
+    for (var c = 0; c < chElements.size(); c++) {
+        var cText = String(chElements.get(c).text());
+        if (cText.indexOf("منذ") === -1) {
+            var numStr = cText.replace(/[^0-9]/g, "");
+            if (numStr) totalChapters = parseInt(numStr, 10);
+            break;
+        }
+    }
+
+    if (totalChapters === 0) {
+        var fallbackLink = doc.selectFirst("a[href*='/chapter-']");
+        if (fallbackLink) {
+            var href = String(fallbackLink.attr("href"));
+            var chStrRaw = href.substring(href.lastIndexOf("chapter-") + 8);
+            var chStr = chStrRaw;
+            if (chStrRaw.indexOf("-") !== -1) chStr = chStrRaw.substring(0, chStrRaw.indexOf("-"));
+            if (chStr.indexOf(".") !== -1) chStr = chStr.substring(0, chStr.indexOf("."));
+            
+            var chNumStr = chStr.replace(/[^0-9]/g, "");
+            if (chNumStr) totalChapters = parseInt(chNumStr, 10);
+        }
+    }
+
+    var chapters = [];
+    if (totalChapters > 0) {
+        for (var i = totalChapters; i >= 1; i--) {
+            chapters.push({
+                title: i.toString(),
+                chapterUrl: "https://azorafly.com/series/" + slug + "/chapter-" + i
             });
         }
     }
-    
+
+    if (chapters.length === 0) {
+        var links = doc.select("a[href*='/chapter-'], a[href*='chapter']");
+        var mapCh = {};
+        for (var j = 0; j < links.size(); j++) {
+            var el = links.get(j);
+            var chUrl = String(el.attr("abs:href") || ("https://azorafly.com" + el.attr("href")));
+
+            var chTitleElem = el.selectFirst("span.font-medium, span.text-xs.sm\\:text-sm.font-medium");
+            var chTitle = chTitleElem ? String(chTitleElem.text()).trim() : "";
+            if (chTitle === "") {
+                var rawTitle = String(el.text());
+                chTitle = rawTitle.split("جديد")[0].split("منذ")[0].split("يوم")[0].split("ساعة")[0].split("دقيقة")[0].trim();
+            }
+            chTitle = chTitle.replace(/(الفصل|Chapter|Ch\.?\s*)/ig, "").trim();
+            if (chTitle === "") chTitle = (j + 1).toString();
+
+            if (chUrl && !mapCh[chUrl]) {
+                mapCh[chUrl] = true;
+                chapters.push({ title: chTitle, chapterUrl: chUrl });
+            }
+        }
+    }
+
     return JSON.stringify({
         title: title,
         coverUrl: coverUrl,
         description: description,
         status: "Ongoing",
-        chapters: chaptersList,
+        chapters: chapters,
         rating: rating,
-        favoritesCount: "0",
+        favoritesCount: favoritesCount,
         type: type,
-        lastUpdated: ""
+        lastUpdated: lastUpdated
     });
 }
 
