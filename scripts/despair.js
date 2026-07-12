@@ -2,7 +2,6 @@ function getLatestManga(page, query) {
     var baseUrl = "https://despair-manga.net";
     var url = query ? (baseUrl + "/?s=" + encodeURIComponent(query)) : (baseUrl + "/manga/?page=" + page + "&order=update");
     
-    // استدعاء دالة الجلب المتوفرة في محرك التطبيق
     var document = fetchJsoupDocument(url, baseUrl);
     var elements = document.select("div.bsx");
     var list = [];
@@ -21,11 +20,15 @@ function getLatestManga(page, query) {
         
         var mangaUrl = linkElement != null ? linkElement.attr("abs:href") : "";
         
-        // تنظيف رابط الغلاف من معاملات الحجم (?resize=...)
+        // الحل النهائي الجذري لـ Split
         var rawCover = "";
         var imgElement = element.selectFirst("img");
         if (imgElement != null) rawCover = imgElement.attr("src");
-        var coverUrl = String(rawCover).split("?")[0];
+        
+        var coverUrl = rawCover;
+        if (rawCover.indexOf("?") !== -1) {
+            coverUrl = rawCover.substring(0, rawCover.indexOf("?"));
+        }
         
         if (title.length > 0 && mangaUrl.length > 0) {
             list.push({
@@ -100,17 +103,17 @@ function getChapterPages(chapterUrl) {
     var pages = [];
     var html = document.html();
     
-    // 1. الاستراتيجية الأولى: استخراج JSON المخفي في السكربت
     if (html.indexOf("ts_reader.run({") !== -1) {
         try {
-            var jsonString = html.split("ts_reader.run(")[1].split(");</script>")[0];
+            var htmlStr = String(html);
+            var jsonString = htmlStr.split("ts_reader.run(")[1].split(");</script>")[0];
             var jsonData = JSON.parse(jsonString);
             var sources = jsonData.sources;
             
             if (sources && sources.length > 0) {
                 var imagesArray = sources[0].images;
                 for (var i = 0; i < imagesArray.length; i++) {
-                    var imgUrl = imagesArray[i].replace(/\\\//g, "/"); // إصلاح السلاش
+                    var imgUrl = imagesArray[i].replace(/\\\//g, "/"); 
                     
                     if (imgUrl.startsWith("/")) {
                         imgUrl = baseUrl + imgUrl;
@@ -120,12 +123,9 @@ function getChapterPages(chapterUrl) {
                     pages.push(imgUrl);
                 }
             }
-        } catch (e) {
-            // تجاهل الخطأ والانتقال للاستراتيجية البديلة
-        }
+        } catch (e) {}
     }
     
-    // 2. الاستراتيجية البديلة: قراءة الـ DOM المباشر
     if (pages.length === 0) {
         try {
             var imageElements = document.select("div#readerarea img");
@@ -147,7 +147,6 @@ function getChapterPages(chapterUrl) {
         } catch (e) {}
     }
     
-    // إزالة التكرارات إن وجدت
     var uniquePages = [];
     for (var k = 0; k < pages.length; k++) {
         if (uniquePages.indexOf(pages[k]) === -1) {
