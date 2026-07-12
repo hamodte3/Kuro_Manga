@@ -1,6 +1,6 @@
 var Jsoup = Packages.org.jsoup.Jsoup;
 
-function fetchLatestManga(page, query) {
+function getLatestManga(page, query) {
     var url = "https://azorafly.com/series";
     if (query) {
         url += "?searchTerm=" + encodeURIComponent(query);
@@ -13,7 +13,6 @@ function fetchLatestManga(page, query) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
 
-    // تحويل النص إلى Jsoup Document
     var doc = Jsoup.parse(html, "https://azorafly.com");
     var list = [];
     var map = {};
@@ -39,14 +38,19 @@ function fetchLatestManga(page, query) {
     return JSON.stringify(list);
 }
 
-function fetchMangaDetails(url) {
+function getMangaDetails(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "{}";
 
     var doc = Jsoup.parse(html, url);
-    var slug = url.substring(url.lastIndexOf("/") + 1).split("?")[0];
+    
+    // إصلاح لغم الـ split
+    var slugRaw = url.substring(url.lastIndexOf("/") + 1);
+    var slug = slugRaw;
+    if (slugRaw.indexOf("?") !== -1) {
+        slug = slugRaw.substring(0, slugRaw.indexOf("?"));
+    }
 
-    // العنوان
     var title = "غير معروف";
     var h1s = doc.select("h1");
     for (var i = 0; i < h1s.size(); i++) {
@@ -56,7 +60,6 @@ function fetchMangaDetails(url) {
         }
     }
 
-    // الغلاف
     var coverImg = doc.selectFirst("meta[property=og:image]");
     var coverUrl = coverImg ? coverImg.attr("content").trim() : "";
     if (!coverUrl) {
@@ -64,16 +67,13 @@ function fetchMangaDetails(url) {
         if (img2) coverUrl = img2.attr("abs:src") || img2.attr("src");
     }
 
-    // الوصف
     var descElem = doc.selectFirst("div[itemprop='description']");
     var description = descElem ? descElem.text().trim() : "لا يوجد وصف.";
 
-    // التقييم
     var ratingMeta = doc.selectFirst("meta[itemprop=ratingValue]");
     var rating = ratingMeta ? parseFloat(ratingMeta.attr("content")) : 0.0;
     if (isNaN(rating)) rating = 0.0;
 
-    // المفضلات
     var favSmall = doc.select("small:contains(المفضلة)");
     var favoritesCount = "0";
     if (favSmall.size() > 0) {
@@ -81,7 +81,6 @@ function fetchMangaDetails(url) {
         if (prevSpan) favoritesCount = prevSpan.text().trim();
     }
 
-    // النوع
     var typeElem = doc.select("span.border");
     var type = "مانجا";
     for (var k = 0; k < typeElem.size(); k++) {
@@ -91,11 +90,9 @@ function fetchMangaDetails(url) {
         }
     }
 
-    // آخر تحديث
     var updatedElem = doc.select("p:contains(منذ)").first();
     var lastUpdated = updatedElem ? updatedElem.text().trim() : "غير معروف";
 
-    // الفصول
     var totalChapters = 0;
     var chElements = doc.select("div.inline p.font-normal.text-xs.inline.ml-1.text-foreground");
     for (var c = 0; c < chElements.size(); c++) {
@@ -111,7 +108,12 @@ function fetchMangaDetails(url) {
         var fallbackLink = doc.selectFirst("a[href*='/chapter-']");
         if (fallbackLink) {
             var href = fallbackLink.attr("href");
-            var chStr = href.substring(href.lastIndexOf("chapter-") + 8).split("-")[0].split(".")[0];
+            // إصلاح ألغام الـ split المتعددة
+            var chStrRaw = href.substring(href.lastIndexOf("chapter-") + 8);
+            var chStr = chStrRaw;
+            if (chStrRaw.indexOf("-") !== -1) chStr = chStrRaw.substring(0, chStrRaw.indexOf("-"));
+            if (chStr.indexOf(".") !== -1) chStr = chStr.substring(0, chStr.indexOf("."));
+            
             var chNumStr = chStr.replace(/[^0-9]/g, "");
             if (chNumStr) totalChapters = parseInt(chNumStr, 10);
         }
@@ -137,7 +139,8 @@ function fetchMangaDetails(url) {
             var chTitleElem = el.selectFirst("span.font-medium, span.text-xs.sm\\:text-sm.font-medium");
             var chTitle = chTitleElem ? chTitleElem.text().trim() : "";
             if (chTitle === "") {
-                chTitle = el.text().split("جديد")[0].split("منذ")[0].split("يوم")[0].split("ساعة")[0].split("دقيقة")[0].trim();
+                var rawTitle = String(el.text());
+                chTitle = rawTitle.split("جديد")[0].split("منذ")[0].split("يوم")[0].split("ساعة")[0].split("دقيقة")[0].trim();
             }
             chTitle = chTitle.replace(/(الفصل|Chapter|Ch\.?\s*)/ig, "").trim();
             if (chTitle === "") chTitle = (j + 1).toString();
@@ -162,7 +165,7 @@ function fetchMangaDetails(url) {
     });
 }
 
-function fetchChapterPages(url) {
+function getChapterPages(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
 
@@ -179,15 +182,13 @@ function fetchChapterPages(url) {
 
     var imgs1 = doc.select("img[data-reader-page-image]");
     for (var i = 0; i < imgs1.size(); i++) {
-        var img1 = imgs1.get(i);
-        processImg(img1.attr("abs:src") || img1.attr("src") || img1.attr("data-src"));
+        processImg(imgs1.get(i).attr("abs:src") || imgs1.get(i).attr("src") || imgs1.get(i).attr("data-src"));
     }
 
     if (list.length === 0) {
         var imgs2 = doc.select("img.object-contain, img[alt*='Page'], img[alt*='الفصل']");
         for (var j = 0; j < imgs2.size(); j++) {
-            var img2 = imgs2.get(j);
-            var src2 = img2.attr("abs:src") || img2.attr("src");
+            var src2 = imgs2.get(j).attr("abs:src") || imgs2.get(j).attr("src");
             if (src2 && (src2.indexOf("storage.azorafly.com") !== -1 || src2.indexOf("/upload/series/") !== -1)) {
                 processImg(src2);
             }
@@ -197,8 +198,7 @@ function fetchChapterPages(url) {
     if (list.length === 0) {
         var imgs3 = doc.select("img");
         for (var k = 0; k < imgs3.size(); k++) {
-            var img3 = imgs3.get(k);
-            var src3 = img3.attr("abs:src") || img3.attr("data-src") || img3.attr("src");
+            var src3 = imgs3.get(k).attr("abs:src") || imgs3.get(k).attr("data-src") || imgs3.get(k).attr("src");
             if (src3 && (src3.indexOf("/upload/") !== -1 || src3.indexOf("/series/") !== -1 || src3.indexOf("page-") !== -1 || src3.indexOf("storage.azorafly") !== -1)) {
                 if (!(/logo|avatar|user|profile|icon|favicon/i.test(src3))) {
                     processImg(src3);
@@ -210,7 +210,7 @@ function fetchChapterPages(url) {
     return JSON.stringify(list);
 }
 
-function fetchChapterText(url) {
+function getChapterText(url) {
     var html = KuroNet.getHtml(url);
     if (!html) return "[]";
 
