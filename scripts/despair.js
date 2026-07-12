@@ -1,8 +1,13 @@
+var Jsoup = Packages.org.jsoup.Jsoup;
+
 function getLatestManga(page, query) {
     var baseUrl = "https://despair-manga.net";
     var url = query ? (baseUrl + "/?s=" + encodeURIComponent(query)) : (baseUrl + "/manga/?page=" + page + "&order=update");
     
-    var document = fetchJsoupDocument(url, baseUrl);
+    var html = KuroNet.getHtml(url);
+    if (!html) return "[]";
+    var document = Jsoup.parse(html, baseUrl);
+    
     var elements = document.select("div.bsx");
     var list = [];
     
@@ -12,18 +17,17 @@ function getLatestManga(page, query) {
         
         var title = "";
         if (linkElement != null && linkElement.hasAttr("title")) {
-            title = linkElement.attr("title").trim();
+            title = String(linkElement.attr("title")).trim();
         } else {
             var tt = element.selectFirst(".tt");
-            if (tt != null) title = tt.text().trim();
+            if (tt != null) title = String(tt.text()).trim();
         }
         
-        var mangaUrl = linkElement != null ? linkElement.attr("abs:href") : "";
+        var mangaUrl = linkElement != null ? String(linkElement.attr("abs:href")) : "";
         
-        // الحل النهائي الجذري لـ Split
         var rawCover = "";
         var imgElement = element.selectFirst("img");
-        if (imgElement != null) rawCover = imgElement.attr("src");
+        if (imgElement != null) rawCover = String(imgElement.attr("src"));
         
         var coverUrl = rawCover;
         if (rawCover.indexOf("?") !== -1) {
@@ -44,23 +48,25 @@ function getLatestManga(page, query) {
 
 function getMangaDetails(url) {
     var baseUrl = "https://despair-manga.net";
-    var document = fetchJsoupDocument(url, baseUrl);
+    var html = KuroNet.getHtml(url);
+    if (!html) return "{}";
+    var document = Jsoup.parse(html, baseUrl);
     
     var titleElem = document.selectFirst("h1.entry-title");
-    var title = titleElem != null ? titleElem.text().trim() : "";
+    var title = titleElem != null ? String(titleElem.text()).trim() : "";
     
     var coverElem = document.selectFirst("img.wp-post-image");
-    var coverUrl = coverElem != null ? coverElem.attr("abs:src") : "";
+    var coverUrl = coverElem != null ? String(coverElem.attr("abs:src")) : "";
     
     var descElem = document.selectFirst("div.entry-content[itemprop=description]");
-    var description = descElem != null ? descElem.text().trim() : "";
+    var description = descElem != null ? String(descElem.text()).trim() : "لا يوجد وصف";
     
     var ratingElem = document.selectFirst("div.numscore");
-    var rating = ratingElem != null ? parseFloat(ratingElem.text()) : 0.0;
+    var rating = ratingElem != null ? parseFloat(String(ratingElem.text())) : 0.0;
     if (isNaN(rating)) rating = 0.0;
     
     var typeElem = document.select("span:contains(النوع) a");
-    var type = (typeElem != null && typeElem.text().trim().length > 0) ? typeElem.text().trim() : "مانجا";
+    var type = (typeElem != null && String(typeElem.text()).trim().length > 0) ? String(typeElem.text()).trim() : "مانجا";
     
     var chaptersList = [];
     var chapterElements = document.select("div#chapterlist li");
@@ -70,9 +76,9 @@ function getMangaDetails(url) {
         var link = element.selectFirst("a");
         if (link == null) continue;
         
-        var chUrl = link.attr("abs:href");
+        var chUrl = String(link.attr("abs:href"));
         var chNumElem = element.selectFirst("span.chapternum");
-        var chTitle = chNumElem != null ? chNumElem.text().trim() : link.text().trim();
+        var chTitle = chNumElem != null ? String(chNumElem.text()).trim() : String(link.text()).trim();
         
         if (chUrl.length > 0) {
             chaptersList.push({
@@ -82,7 +88,7 @@ function getMangaDetails(url) {
         }
     }
     
-    var details = {
+    return JSON.stringify({
         title: title,
         coverUrl: coverUrl,
         description: description,
@@ -92,28 +98,28 @@ function getMangaDetails(url) {
         favoritesCount: "0",
         type: type,
         lastUpdated: ""
-    };
-    
-    return JSON.stringify(details);
+    });
 }
 
 function getChapterPages(chapterUrl) {
     var baseUrl = "https://despair-manga.net";
-    var document = fetchJsoupDocument(chapterUrl, chapterUrl);
+    var htmlRaw = KuroNet.getHtml(chapterUrl);
+    if (!htmlRaw) return "[]";
+    var document = Jsoup.parse(htmlRaw, baseUrl);
+    
     var pages = [];
-    var html = document.html();
+    var html = String(document.html());
     
     if (html.indexOf("ts_reader.run({") !== -1) {
         try {
-            var htmlStr = String(html);
-            var jsonString = htmlStr.split("ts_reader.run(")[1].split(");</script>")[0];
+            var jsonString = html.split("ts_reader.run(")[1].split(");</script>")[0];
             var jsonData = JSON.parse(jsonString);
             var sources = jsonData.sources;
             
             if (sources && sources.length > 0) {
                 var imagesArray = sources[0].images;
                 for (var i = 0; i < imagesArray.length; i++) {
-                    var imgUrl = imagesArray[i].replace(/\\\//g, "/"); 
+                    var imgUrl = String(imagesArray[i]).replace(/\\\//g, "/"); 
                     
                     if (imgUrl.startsWith("/")) {
                         imgUrl = baseUrl + imgUrl;
@@ -131,9 +137,9 @@ function getChapterPages(chapterUrl) {
             var imageElements = document.select("div#readerarea img");
             for (var j = 0; j < imageElements.size(); j++) {
                 var img = imageElements.get(j);
-                var url = img.attr("data-src").trim();
-                if (url === "") url = img.attr("data-lazy-src").trim();
-                if (url === "") url = img.attr("src").trim();
+                var url = String(img.attr("data-src")).trim();
+                if (url === "") url = String(img.attr("data-lazy-src")).trim();
+                if (url === "") url = String(img.attr("src")).trim();
                 
                 if (url !== "" && url.indexOf("readerarea.svg") === -1 && url.indexOf("data:image") === -1) {
                     if (url.startsWith("/")) {
