@@ -2,15 +2,15 @@
   {
     "id": "azora",
     "name": "Azora",
-    "version": "1.1.0",
-    "downloadUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/azoraf.js?v=2",
+    "version": "1.2.0",
+    "downloadUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/azoraf.js?v=3",
     "pkgName": "com.kuro.extension.azora"
   },
   {
     "id": "despairmanga", 
     "name": "Despair Manga",
-    "version": "1.1.0",
-    "downloadUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/despair.js?v=2",
+    "version": "1.2.0",
+    "downloadUrl": "https://raw.githubusercontent.com/hamodte3/Kuro_Manga/refs/heads/main/scripts/despair.js?v=3",
     "pkgName": "com.kuro.extension.despair"
   }
 ]
